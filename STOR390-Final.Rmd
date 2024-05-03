@@ -1,0 +1,105 @@
+---
+title: "STOR 390: Moral Machine Learning  \nFinal"
+author: "Logan Schmitt"
+date: "05/03/2024"
+output:
+  pdf_document: default
+  html_document:
+    number_sections: yes
+---
+
+# Disparate Impact of Artificial Intelligence Bias in Ridehailing Economy's Price Discrimination Algorithms
+
+
+## Introduction
+
+Within recent years, rideshare services, such as Uber and Lyft, have exploded in popularity as an alternative form of transportation. In 2018, over 36 percent of U.S. adults reported using such services, more than double the population who used it in 2015. Serving as a more convenient form of taxicab services, ridehailing platforms enable the user to specify pick-up and drop-off locations. 
+
+A key way in which these services differ from traditional taxicabs involves their pricing calculations. Taxis typically operate under fixed rates, charging a base fare along with additional fees per distance traveled as well as any time spent waiting in traffic. Ridesharing services, alternatively, calculate fare prices utilizing AI technologies, which mainly consider trip length to give more consistent pricing. This approach is designed to give users better deals than traditional taxicab services.
+
+Although intended to offer users more affordable prices, both Uber and Lyft also use real-time real-time data analysis to adjust prices. Known as "surge multipliers," this increases trip prices depending upon demand relative to supply in a trip’s location, which can cause trip prices to massively increase, costing the user much more than a typical ride. This dynamic pricing model creates the potential for algorithmic bias, as prices can disproportionately affect certain demographics or neighborhoods due to the supply of riders and the demand of riders in these specific areas.
+
+An analysis of over 68 million ride-hailing samples from the city of Chicago indicates neighborhoods with larger non-white populations, higher poverty levels, younger residents, and higher education levels are significantly associated with higher fare prices.
+
+
+## Analysis of Methods
+
+The ridehailing data used in this study originally contained over 100 million trips in the city of Chicago from November 2018 to September 2019. The dataset contains information about the duration, charges, and pickup and drop-off locations for each trip. However, many of these trips contain rides that utilize different pricing strategies than the typical single-rider trips, such as those involving the pickup and dropoff of multiple individuals. After excluding these trips, ~68 million unique ridehailing rides remained. 
+
+The American Community Survey (ACS) census tract demographic information used in the analysis comes from the 2018 United States Census Bureau. Since no rider characteristics are present in the Chicago ridehailing data, ACS data is used to connect the pick-up and drop-off locations to census information. This allows for assumptions to be created based on the neighborhoods in which riders were picked up or dropped off, including ethnicity, poverty levels, age, and education levels. This combination allows for a detailed examination of how demographic factors might influence pricing algorithms in ridehailing services.
+
+The large sample size of the study increases the statistical power of it. As a result, it allows for the highest probability of detecting differences in fare pricing influenced by neighborhood demographics. This also reduces the risk of Type II errors. Failing to correctly identify true disparities is especially important in an analysis that aims to uncover unequal treatment among certain demographics, effectively overlooking systemic inequalities.
+
+Additionally, the calculation of combined effect sizes rather than just simple averages or basic statistical tests allows for a more intuitive understanding of the relationships between demographic factors and rideshare service pricing. Calculating combined effect sizes for each demographic characteristic independently allows for the analysis of specific attributes on fare pricing without the influence of other factors on it. This enables more generalizable insights by only considering the impact of each demographic feature individually while accounting for the variability within each neighborhood.
+
+However, one major area of weakness deals with scope. The study is localized to Chicago and its unique socio-economic and demographic dynamics. Thus, while the statistical analysis is thorough within this context and generalizable to Chicago as a whole, the results may not generalize to other cities or countries without similar analyses being conducted there.
+
+As a result, I desired to further investigate as to whether these results extend to other major American cities. In order to determine if these findings were unique to Chicago, I analyzed rideshare app trips from the city of Boston. Using the data of over 60 thousand Uber and Lyft trips, I calculated the combined effect sizes for each of the 14 neighborhoods present within the dataset using the 'metafor' package. Cohen's d values were computed to estimate the effect size of fare differences compared to the city-wide mean fare. This approach allowed for an assessment of whether some neighborhoods consistently experienced higher or lower fares. 
+
+Although the combined effect size calculated for Boston is close to zero, it does display variable effect sizes across neighborhoods. For example, the surrounding areas of Boston University and Fenway showed positive effect sizes, indicating higher fares, while Haymarket Square displayed a negative effect size, signifying lower fares. Although there is no significant overall effect on fares, there do exist, to an extent, fare differences across neighborhoods. Furthermore, this analysis revealed substantial heterogeneity (I^2 = 94.83%). This indicates that most of the differences in effect sizes were due to real differences in fare pricing across neighborhoods, rather than random variability.
+
+Although much more subtle than the differences in fare pricing observed in Chicago, the results from the analysis hint towards pricing differences in Boston across neighborhoods. As a result, the algorithmic bias present may not be unique to Chicago.
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(metafor)
+
+filePath = "/Users/lks/Desktop/STOR390 Final//BostonRideshareData.csv"
+data1 = read_csv(filePath,show_col_types = FALSE)
+```
+
+```{r results='asis', echo=FALSE, message=FALSE, warning=FALSE}
+# Group by neighborhood and calculate means and standard deviations
+Boston_stats = data1 %>%
+  group_by(source) %>%
+  summarize(
+    mean_fare = mean(price, na.rm = TRUE),
+    sd_fare = sd(price, na.rm = TRUE),
+    n = n(),
+    .groups = 'drop'
+  )
+```
+
+```{r results='hide', echo=FALSE, message=FALSE, warning=FALSE}
+Boston_mean <- mean(data1$price, na.rm = TRUE)
+Boston_sd <- sd(data1$price, na.rm = TRUE)
+
+Boston_stats$cohen_d <- (Boston_stats$mean_fare - Boston_mean) / Boston_sd
+Boston_stats$var_d <- (Boston_stats$sd_fare / sqrt(Boston_stats$n))^2
+Boston_stats
+```
+
+```{r results='hide', echo=FALSE, message=FALSE, warning=FALSE}
+library(metafor)
+meta_analysis <- rma(yi = cohen_d, vi = var_d, data = Boston_stats, method = "REML")
+summary(meta_analysis)
+```
+
+```{r results='asis', echo=FALSE}
+summary(meta_analysis)
+forest(meta_analysis,  
+       slab = Boston_stats$source,
+       main = "Effect Sizes by Neighborhood in Boston",
+       xlab = "Effect Size (measured by Cohen's d)",
+       cex = 0.8,  # Adjusts the size of the text in the plot
+       )
+```
+
+
+## Analysis of Normative Consideration
+
+The dynamic pricing systems used by ridesharing services result in algorithmic bias that leads to pricing inequities among different demographics, violating several philosophical and ethical principles and notions. 
+
+First and foremost, differences in fare pricing for customers from differing demographic and socio-economic backgrounds are a clear example of arbitrary discrimination. These pricing algorithms put those from different backgrounds, income levels, ages, and educations at a disadvantage. This disproportionate treatment of groups fails to uphold notions of fairness. More specifically, it fails to guarantee equitable allocation of these services across society. This lack of equitable distribution can perpetuate existing disparities, further contributing to the creation of negative feedback loops. For example, lower-income individuals may rely on ridesharing services as forms of transportation to get to and from their jobs. Making transportation less accessible, hinders their ability to maintain employment, effectively limiting opportunities for upward mobility.
+
+Secondly, these discrepancies in fare pricing among the citizens of Chicago violate ethical principles from a utilitarian standpoint. Utilitarianism justifies an action on the basis of its consequences; furthermore, the right action is the one with the best consequences by maximizing pleasure and minimizing the pain of society. A key component of utilitarianism is impartiality; one party cannot prioritize their interests over the overall good or well-being of society. The AI technologies used by rideshare services seemingly prioritize company profits without fully considering their broader societal impacts. These algorithms, effectively, only focus on benefiting the ridesharing companies to the detriment of specific groups of users.
+
+Lastly, the “black box” nature of the algorithm results in significant issues about accountability. Within AI, a black box describes any algorithm or system in which you cannot clearly understand its inner workings. Translating this to the pricing techniques that Uber, Lyft, and other rideshare services utilize, much of the process of determining the dynamic individualized pricing remains largely unknown, resulting in this notion of unfair and unequal treatment among individual riders. As a result, this lack of transparency fails to satisfy the explainability portion of AI; it prevents the ability of creators, users, and other third parties to fully see how the system takes in data to create decisions. This lack of transparency and accountability in how these algorithms operate and make decisions complicates the ability of the public and regulators to assess and correct these issues exacerbated by the system.
+
+Considering the ethical implications of the dynamic pricing techniques used by ridesharing services, there lacks a moral justification for these services using employing practices.
+
+
+## Conclusion
+
+Rideshare services, such as Uber and Lyft, set their fare prices through the use of dynamic pricing algorithms. These methods take into account patterns in certain trip factors, such as ride duration, pick-up and drop-off locations, and supply and demand to set prices for customers. However, these systems have the strong potential to exhibit AI bias. An analysis of rideshare data from Chicago showed that neighborhoods with larger non-white populations, higher poverty levels, younger residents, and higher education levels tend to have higher trip prices. Extending the study to neighborhoods in Boston indicate that these findings may not exist solely in Chicago. This disproportionately affects residents of these areas by decreasing accessibility of transportation services, leading to an overall decrease in social equity and public welfare. Additionally, the black box nature of the algorithm hinders the ability to diagnose where these issues stem from in order to fix these discrepancies, further allowing the continuance of such inequities.  
